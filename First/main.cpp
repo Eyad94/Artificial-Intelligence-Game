@@ -42,9 +42,8 @@ priority_queue<Node, vector<Node>, CompareNodes> pq;
 
 Point2D start,target;
 
-
-
 void SetupMaze();
+
 
 void init()
 {

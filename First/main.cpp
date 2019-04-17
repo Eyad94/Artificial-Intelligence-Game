@@ -1,3 +1,21 @@
+
+//*****************************************************************************************************
+//*****************************************************************************************************
+//*****************************************************************************************************
+//***********************														***********************
+//***********************														***********************
+//***********************		Name:	Ali khutaba			ID: 205817562		***********************
+//***********************		Name:	Eyad zaid			ID:	312441512		***********************
+//***********************														***********************
+//***********************														***********************
+//***********************					version 1.1.7						***********************
+//***********************														***********************
+//***********************		last update : 02/04/2019	15:10				***********************
+//***********************														***********************
+//*****************************************************************************************************
+//*****************************************************************************************************
+//*****************************************************************************************************
+
 #include "GLUT.h"
 #include <math.h>
 #include <time.h>
@@ -7,20 +25,29 @@
 #include "Point2D.h"
 #include "Room.h"
 #include "Node.h"
+#include "BestNode.h"
 #include "CompareNodes.h"
 #include "Parent.h"
+#include "Player.h"
+
 using namespace std;
 
 const int W = 600; // window width
 const int H = 600; // window height
 const int NUM_ROOMS = 10;
+const int NUM_HEALTH_MUNITIONS = 2;
+const int NUM_OBSTACLES = 3;
+
 
 const int SPACE = 1;
 const int WALL = 2;
-const int VISITED = 3;
-const int START = 4;
-const int TARGET = 5;
-const int GRAY = 6;
+const int HEALTH = 3;
+const int MUNITIONS = 4;
+const int OBSTACLES = 5;
+const int HIDDEN_TARGET = 6;
+const int PLAYER1 = 8;
+const int PLAYER2 = 9;
+
 const int UP = 1;
 const int DOWN = 2;
 const int LEFT = 3;
@@ -28,9 +55,10 @@ const int RIGHT = 4;
 
 const int MSIZE = 100;
 const double SQSIZE = 2.0 / MSIZE;
-
 int maze[MSIZE][MSIZE];
-bool bfs_started = false;
+
+bool start_game = false;
+
 Room all_rooms[NUM_ROOMS];
 
 // gray queue
@@ -42,8 +70,43 @@ priority_queue<Node, vector<Node>, CompareNodes> pq;
 
 Point2D start,target;
 
-void SetupMaze();
+Point2D health_arr[NUM_HEALTH_MUNITIONS];
+Point2D munitions_arr[NUM_HEALTH_MUNITIONS];
+Point2D obstacles_arr[NUM_HEALTH_MUNITIONS];
 
+int status_rooms[NUM_ROOMS] = { 0 };
+
+Point2D* start_first_player, *start_secend_player;
+Point2D* health_point1, *health_point2;
+Point2D* munition_point1, *munition_point2;
+
+Player *first_player, *secend_player;
+
+
+int counter = 0;
+
+void SetupMaze();
+Point2D* Setup_Health_munitions(int num_rooms);
+void munition();
+void health();
+void obstacles();
+
+
+Point2D* RandomPoints()
+{
+	int x, y;
+	bool isSpace = true;
+
+	while (isSpace)
+	{
+		x = rand() % (MSIZE-1);
+		y = rand() % (MSIZE-1);
+		
+		if (maze[x][y] == SPACE)
+			isSpace = false;
+	}
+	return new Point2D(y, x);;
+}
 
 void init()
 {
@@ -59,10 +122,118 @@ void init()
 
 	SetupMaze();
 
+
+	start_first_player = RandomPoints();
+	start_secend_player = RandomPoints();
+	maze[start_first_player->GetY()][start_first_player->GetX()] = PLAYER1;
+	maze[start_secend_player->GetY()][start_secend_player->GetX()] = PLAYER2;
+	
+	Sleep(100);
+
+	health();
+	munition();
+	obstacles();
+
+	first_player = new Player("red",start_first_player, start_secend_player, maze , PLAYER1 , PLAYER2 , health_arr, munitions_arr);
+	secend_player = new Player("blue",start_secend_player, start_first_player, maze , PLAYER2 , PLAYER1, health_arr, munitions_arr);
+
+	first_player->set_player(secend_player);
+	secend_player->set_player(first_player);
+
 	glClearColor(0.7, 0.7, 0.7, 0);
 
 	glOrtho(-1, 1, -1, 1, -1, 1);
 }
+
+
+
+
+Point2D* Setup_obstacles_munitions(int num_room)
+{
+	int x, y, min, max;
+	max = all_rooms[num_room].GetCenter().GetY() + (all_rooms[num_room].GetHeight() / 2);
+	x = max - 2;
+
+	max = all_rooms[num_room].GetCenter().GetX() + (all_rooms[num_room].GetWidth() / 2);
+	y = max - 1;
+
+	return new Point2D(y, x);
+}
+
+
+void obstacles()
+{
+	int num_room, i;
+	int rooms_status[NUM_ROOMS] = { 0 };
+
+	for (i = 0; i < NUM_OBSTACLES; )
+	{
+		num_room = rand() % NUM_ROOMS;
+		if (rooms_status[num_room] == 0)
+		{
+			obstacles_arr[i] = *(Setup_obstacles_munitions(num_room));
+			maze[obstacles_arr[i].GetY()][obstacles_arr[i].GetX()] = OBSTACLES;
+			maze[obstacles_arr[i].GetY() + 1][obstacles_arr[i].GetX()] = OBSTACLES;
+			maze[obstacles_arr[i].GetY() + 1][obstacles_arr[i].GetX() + 1] = HIDDEN_TARGET;
+			rooms_status[num_room] = 1;
+			i++;
+		}
+	}
+}
+
+
+void health()
+{
+	int num_room, i;
+
+	for (i = 0; i < NUM_HEALTH_MUNITIONS; )
+	{
+		num_room = rand() % NUM_ROOMS;
+		if (status_rooms[num_room] == 0)
+		{
+			health_arr[i] = *(Setup_Health_munitions(num_room));
+			maze[health_arr[i].GetY()][health_arr[i].GetX()] = HEALTH;
+			status_rooms[num_room] = 1;
+			i++;
+		}
+	}
+}
+
+
+void munition()
+{
+	int num_room, i;
+
+	for (i = 0; i < NUM_HEALTH_MUNITIONS; )
+	{
+		num_room = rand() % NUM_ROOMS;
+		if (status_rooms[num_room] == 0)
+		{
+			munitions_arr[i] = *(Setup_Health_munitions(num_room));
+			maze[munitions_arr[i].GetY()][munitions_arr[i].GetX()] = MUNITIONS;
+			status_rooms[num_room] = 1;
+			i++;
+		}
+	}
+}
+
+
+Point2D* Setup_Health_munitions(int num_room)
+{
+	int x, y, min, max;
+
+	max = all_rooms[num_room].GetCenter().GetY() + (all_rooms[num_room].GetHeight() / 2);
+	min = all_rooms[num_room].GetCenter().GetY() - (all_rooms[num_room].GetHeight() / 2);
+	x = (rand() % ((max - min) - 1)) + min;
+
+	max = all_rooms[num_room].GetCenter().GetX() + (all_rooms[num_room].GetWidth() / 2);
+	min = all_rooms[num_room].GetCenter().GetX() - (all_rooms[num_room].GetWidth() / 2);
+	y = (rand() % ((max - min) - 1)) + min;
+
+	return new Point2D(y, x);
+}
+
+
 
 void AddNewNode(Node current, int direction)
 {
@@ -210,6 +381,22 @@ void SetupMaze()
 	bool isValidRoom;
 	Room* pr=NULL;
 
+	for (i = 0; i < MSIZE; i++)
+	{
+		maze[i][0] = WALL;
+		maze[i][1] = WALL;
+
+		maze[0][i] = WALL;
+		maze[1][i] = WALL;
+
+		maze[i][MSIZE - 1] = WALL;
+		maze[i][MSIZE - 2] = WALL;
+
+		maze[MSIZE - 1][i] = WALL;
+		maze[MSIZE - 2][i] = WALL;
+	}
+	
+
 	for (counter = 0; counter < NUM_ROOMS; counter++)
 	{
 		// create room
@@ -239,6 +426,7 @@ void SetupMaze()
 			for (j = left; j <= right; j++)
 				maze[i][j] = SPACE;
 
+
 	}
 
 	DigTunnels();
@@ -259,19 +447,24 @@ void DrawMaze()
 			case SPACE:
 				glColor3d(1, 1, 1); // white;
 				break;
-			case VISITED:
-				glColor3d(0, 0.9, 0); // green;
+			case HEALTH:
+				glColor3f(0.0f, 1.0f, 0.0f);//Green
 				break;
-			case START:
-				glColor3d(0, 0, 1); // blue;
-				break;
-			case TARGET:
-				glColor3d(1,0,0 ); // RED;
-				break;
-			case GRAY:
+			case MUNITIONS:
 				glColor3d(1, .8, 0); // ORANGE;
 				break;
-
+			case PLAYER1:
+				glColor3d(1, 0, 0); // RED;
+				break;
+			case PLAYER2:
+				glColor3d(0, 0, 1); // BLUE;
+				break;
+			case OBSTACLES:
+				glColor3d(0.5, 0.3, 0.3); // Brown
+				break;
+			case HIDDEN_TARGET:
+				glColor3d(0, 0, 0); // Black
+				break;
 			}
 			// draw square
 			glBegin(GL_POLYGON);
@@ -286,6 +479,29 @@ void DrawMaze()
 
 
 
+//*************************************** My Game ****************************************************
+
+
+void StartGame()
+{
+
+	if (start_game)
+	{
+		first_player->start_game(&start_game);
+		secend_player->start_game(&start_game);
+		Sleep(100);
+		counter++;
+		//printf("%d	after the sleep in the start game main\n" , counter);
+
+	}
+
+	
+}
+
+
+//********************************************************************************************************
+
+
 void display()
 {
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -298,10 +514,25 @@ void display()
 void idle()
 {
 	glutPostRedisplay();// calls indirectly to display
+
+	if (start_game) // start the game 
+		StartGame();
+
 }
 
 void Menu(int choice)
 {
+
+	switch (choice)
+	{
+	case 1:
+		start_game = true;
+		break;
+	case 2:
+		start_game = false;
+		break;
+	}
+
 }
 
 void main(int argc, char* argv[])
@@ -317,6 +548,8 @@ void main(int argc, char* argv[])
 	init();
 
 	glutCreateMenu(Menu);
+	glutAddMenuEntry("Start Game", 1);
+	glutAddMenuEntry("stop Game", 2);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 

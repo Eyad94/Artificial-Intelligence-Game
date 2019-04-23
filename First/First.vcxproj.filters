@@ -33,6 +33,15 @@
     <ClCompile Include="Parent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="BestNode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CompareBestNodes.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Point2D.h">
@@ -48,6 +57,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Parent.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BestNode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CompareBestNodes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

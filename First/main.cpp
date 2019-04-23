@@ -1,3 +1,5 @@
+//version 1.1.9
+
 #include "GLUT.h"
 #include <math.h>
 #include <time.h>
@@ -50,10 +52,11 @@ vector <Parent> parents;
 
 priority_queue<Node, vector<Node>, CompareNodes> pq;
 
-Point2D start,target;
+Point2D start, target;
 
 Point2D health_arr[NUM_HEALTH_MUNITIONS];
 Point2D munitions_arr[NUM_HEALTH_MUNITIONS];
+Point2D hidden_arr[NUM_OBSTACLES];
 Point2D obstacles_arr[NUM_HEALTH_MUNITIONS];
 
 int status_rooms[NUM_ROOMS] = { 0 };
@@ -81,9 +84,9 @@ Point2D* RandomPoints()
 
 	while (isSpace)
 	{
-		x = rand() % (MSIZE-1);
-		y = rand() % (MSIZE-1);
-		
+		x = rand() % (MSIZE - 1);
+		y = rand() % (MSIZE - 1);
+
 		if (maze[x][y] == SPACE)
 			isSpace = false;
 	}
@@ -109,15 +112,15 @@ void init()
 	start_secend_player = RandomPoints();
 	maze[start_first_player->GetY()][start_first_player->GetX()] = PLAYER1;
 	maze[start_secend_player->GetY()][start_secend_player->GetX()] = PLAYER2;
-	
+
 	Sleep(100);
 
 	health();
 	munition();
 	obstacles();
 
-	first_player = new Player("red",start_first_player, start_secend_player, maze , PLAYER1 , PLAYER2 , health_arr, munitions_arr);
-	secend_player = new Player("blue",start_secend_player, start_first_player, maze , PLAYER2 , PLAYER1, health_arr, munitions_arr);
+	first_player = new Player("red", start_first_player, start_secend_player, maze, PLAYER1, PLAYER2, health_arr, munitions_arr, hidden_arr);
+	secend_player = new Player("blue", start_secend_player, start_first_player, maze, PLAYER2, PLAYER1, health_arr, munitions_arr, hidden_arr);
 
 	first_player->set_player(secend_player);
 	secend_player->set_player(first_player);
@@ -154,6 +157,7 @@ void obstacles()
 		if (rooms_status[num_room] == 0)
 		{
 			obstacles_arr[i] = *(Setup_obstacles_munitions(num_room));
+			hidden_arr[i] = *(new Point2D(obstacles_arr[i].GetY() + 1, obstacles_arr[i].GetX() + 1));
 			maze[obstacles_arr[i].GetY()][obstacles_arr[i].GetX()] = OBSTACLES;
 			maze[obstacles_arr[i].GetY() + 1][obstacles_arr[i].GetX()] = OBSTACLES;
 			maze[obstacles_arr[i].GetY() + 1][obstacles_arr[i].GetX() + 1] = HIDDEN_TARGET;
@@ -246,18 +250,18 @@ void AddNewNode(Node current, int direction)
 		break;
 	}// switch
 
-	if (direction==UP && current.GetPoint().GetY() > 0 ||
-		direction == DOWN && current.GetPoint().GetY() < MSIZE-1 ||
+	if (direction == UP && current.GetPoint().GetY() > 0 ||
+		direction == DOWN && current.GetPoint().GetY() < MSIZE - 1 ||
 		direction == LEFT && current.GetPoint().GetX() > 0 ||
 		direction == RIGHT && current.GetPoint().GetX() < MSIZE - 1)
 	{
-		pt = new Point2D(current.GetPoint().GetX()+dx, current.GetPoint().GetY() +dy);
+		pt = new Point2D(current.GetPoint().GetX() + dx, current.GetPoint().GetY() + dy);
 		gray_it = find(gray.begin(), gray.end(), *pt);
 		black_it = find(black.begin(), black.end(), *pt);
 		if (gray_it == gray.end() && black_it == black.end()) // this is a new point
 		{
 			// very important to tunnels
-			if (maze[current.GetPoint().GetY() +dy][current.GetPoint().GetX()+dx] == WALL)
+			if (maze[current.GetPoint().GetY() + dy][current.GetPoint().GetX() + dx] == WALL)
 				weight = wall_weight;
 			else weight = space_weight;
 			// weight depends on previous weight and wheater we had to dig
@@ -265,7 +269,7 @@ void AddNewNode(Node current, int direction)
 			tmp = new Node(*pt, target, current.GetG() + weight);
 			pq.emplace(*tmp); // insert first node to priority queue
 			gray.push_back(*pt); // paint it gray
-			// add Parent
+								 // add Parent
 			parents.push_back(Parent(tmp->GetPoint(), current.GetPoint(), true));
 		}
 	}
@@ -280,7 +284,7 @@ void RunAStar4Tunnels()
 	vector<Point2D>::iterator gray_it;
 	vector<Point2D>::iterator black_it;
 	bool finished = false;
-	double space_weight = 0.5, wall_weight = 0.5,weight;
+	double space_weight = 0.5, wall_weight = 0.5, weight;
 
 	while (!pq.empty() && !finished)
 	{
@@ -332,7 +336,7 @@ void DigTunnels()
 {
 	int i, j;
 
-	for(i=0;i<NUM_ROOMS;i++)
+	for (i = 0; i<NUM_ROOMS; i++)
 		for (j = i + 1; j < NUM_ROOMS; j++)
 		{
 			start = all_rooms[i].GetCenter();
@@ -358,10 +362,10 @@ void DigTunnels()
 
 void SetupMaze()
 {
-	int i, j,counter;
+	int i, j, counter;
 	int left, right, top, bottom;
 	bool isValidRoom;
-	Room* pr=NULL;
+	Room* pr = NULL;
 
 	for (i = 0; i < MSIZE; i++)
 	{
@@ -377,7 +381,7 @@ void SetupMaze()
 		maze[MSIZE - 1][i] = WALL;
 		maze[MSIZE - 2][i] = WALL;
 	}
-	
+
 
 	for (counter = 0; counter < NUM_ROOMS; counter++)
 	{
@@ -385,8 +389,8 @@ void SetupMaze()
 		do
 		{
 			free(pr);
-			pr = new Room(Point2D(rand()%MSIZE,
-			rand() % MSIZE), 5 + rand() % 15, 5 + rand() % 25);
+			pr = new Room(Point2D(rand() % MSIZE,
+				rand() % MSIZE), 5 + rand() % 15, 5 + rand() % 25);
 			top = pr->GetCenter().GetY() - pr->GetHeight() / 2;
 			if (top < 0) top = 0;
 			bottom = pr->GetCenter().GetY() + pr->GetHeight() / 2;
@@ -418,7 +422,7 @@ void DrawMaze()
 {
 	int i, j;
 
-	for(i = 0;i<MSIZE;i++)
+	for (i = 0; i<MSIZE; i++)
 		for (j = 0; j < MSIZE; j++)
 		{
 			switch (maze[i][j])
@@ -450,10 +454,10 @@ void DrawMaze()
 			}
 			// draw square
 			glBegin(GL_POLYGON);
-				glVertex2d(j*SQSIZE - 1- SQSIZE/2, i*SQSIZE - 1+SQSIZE/2);
-				glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
-				glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
-				glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
+			glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
+			glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
+			glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
+			glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
 			glEnd();
 		}
 
@@ -477,7 +481,7 @@ void StartGame()
 
 	}
 
-	
+
 }
 
 

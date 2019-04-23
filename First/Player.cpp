@@ -4,6 +4,7 @@ const int SPACE = 1;
 const int WALL = 2;
 const int HEALTH = 3;
 const int MUNITIONS = 4;
+const int HIDDEN_TARGET = 6;
 const int PLAYER1 = 8;
 const int PLAYER2 = 9;
 const int DISTANCE = 3;
@@ -19,12 +20,13 @@ Player::~Player()
 
 
 // new constructor ***********************
-Player::Player(char*name, Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE], int me, int enemy, Point2D health_arr[HEALTH_MUNITIONS_SIZE], Point2D munition_arr[HEALTH_MUNITIONS_SIZE])
+Player::Player(char* name, Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE], int me, int enemy, Point2D health_arr[HEALTH_MUNITIONS_SIZE], Point2D munition_arr[HEALTH_MUNITIONS_SIZE], Point2D hidden_arr[NUM_HIDDEN])
 {
 	int i, j;
 	this->g = 0;
 	this->name = name;
-	this->health = rand()%100;
+	this->health = rand() % 100;
+	this->old_health = this->health;
 	this->munitions = rand() % 100;
 	this->me = me;
 	this->enemy = enemy;
@@ -46,6 +48,9 @@ Player::Player(char*name, Point2D* start, Point2D* target, int maze[MAZE_SIZE][M
 		this->munition_arr[i] = munition_arr[i];
 	}
 
+	for (i = 0; i < HEALTH_MUNITIONS_SIZE; i++)
+		this->hidden_arr[i] = hidden_arr[i];
+
 }
 
 void Player::set_player(Player *enemy)
@@ -61,11 +66,18 @@ void Player::start_game(bool *a_star_started)
 		return;
 
 	this->a_star_started = a_star_started;
-	
+
+
 	if (this->health < 0)
 	{
 		*a_star_started = false;
 		printf("THE WINNER IS %s\n", this->enemy1->name);
+		return;
+	}
+
+	if (this->health < this->old_health)
+	{
+		escape();
 		return;
 	}
 
@@ -93,11 +105,11 @@ void Player::attack()
 		print("Attacking");
 		this->do_once = false;
 		this->target_seatch = this->enemy_point;
-		clear();
+		//clear();
 
 	}
 
-	A_start_algorithm(this->enemy , this->enemy_point);
+	A_start_algorithm(this->enemy, this->enemy_point);
 
 	if ((*a_star_started) == false)
 	{
@@ -110,24 +122,56 @@ void Player::attack()
 }
 
 
+void Player::escape()
+{
+	int index = 0;
+
+	if (this->do_once == true)
+	{
+		this->do_once = false;
+		//clear();
+
+	}
+	print("Escape");
+
+
+	index = get_nearby_point(this->hidden_arr);
+	this->target_seatch = &this->hidden_arr[index];
+
+
+	A_start_algorithm(HIDDEN_TARGET, target_seatch);
+
+	this->hidden_arr[index].SetIsValid(true);
+	if ((*a_star_started) == false)
+	{
+		this->hidden_arr[index].SetIsValid(true);
+		this->do_once = true;
+		this->old_health = this->health;
+		printf("i am %s fount the hidden target \n", this->name);
+		*this->a_star_started = true;
+	}
+
+
+}
+
 void Player::search_health()
 {
 	//printf("%s : ACTION : Search Health\n", this->name);
 
 	int index = 0;
 
-	if(this->do_once == true)
+	if (this->do_once == true)
 	{
 		print("Search Health");
 		this->do_once = false;
-		clear();
+		//clear();
 
 	}
 	index = get_nearby_point(this->health_arr);
 	this->target_seatch = &this->health_arr[index];
 
 
-	A_start_algorithm(HEALTH  , target_seatch);
+	A_start_algorithm(HEALTH, target_seatch);
 
 	this->health_arr[index].SetIsValid(true);
 	if ((*a_star_started) == false)
@@ -135,7 +179,7 @@ void Player::search_health()
 		this->health_arr[index].SetIsValid(true);
 		this->do_once = true;
 		this->health = 100;
-		printf("i am %s fount the medicament and my health : %d/100\n",this->name , this->health);
+		printf("i am %s fount the medicament and my health : %d/100\n", this->name, this->health);
 		*this->a_star_started = true;
 	}
 
@@ -152,14 +196,14 @@ void Player::search_munitions()
 	{
 		print("Search Munitions");
 		this->do_once = false;
-		clear();
+		//clear();
 
 	}
 	index = get_nearby_point(this->munition_arr);
 	this->target_seatch = &this->munition_arr[index];
 
 
-	A_start_algorithm(MUNITIONS , &this->munition_arr[index]);
+	A_start_algorithm(MUNITIONS, &this->munition_arr[index]);
 	this->munition_arr[index].SetIsValid(false);
 
 	if ((*a_star_started) == false)
@@ -167,7 +211,7 @@ void Player::search_munitions()
 		this->munition_arr[index].SetIsValid(false);
 		this->do_once = true;
 		this->munitions = 100;
-		printf("i am %s fount the munitions and my munitions : %d/100\n",this->name , this->munitions);
+		printf("i am %s fount the munitions and my munitions : %d/100\n", this->name, this->munitions);
 		*this->a_star_started = true;
 	}
 
@@ -226,7 +270,7 @@ void Player::search_Neighbors() {
 				break;
 			}
 			printf("-------------------->>>>> %d \n", distance);
-			printf("i am %s attacked the enemy  and enemy health is : %d/100\n", this->name , this->enemy1->health);
+			printf("i am %s attacked the enemy  and enemy health is : %d/100\n", this->name, this->enemy1->health);
 
 
 		}
@@ -315,7 +359,7 @@ bool Player::check_player_in_room() {
 }
 
 
-void Player::A_start_algorithm(int target , Point2D* target_point)
+void Player::A_start_algorithm(int target, Point2D* target_point)
 {
 	if (priority.empty())
 		return;
@@ -327,7 +371,7 @@ void Player::A_start_algorithm(int target , Point2D* target_point)
 		gray_iterator = find(gray.begin(), gray.end(), current);
 		gray.erase(gray_iterator);
 
-	
+
 
 		if (*maze[current.GetPoint()->GetY()][current.GetPoint()->GetX()] == target)
 			(*a_star_started) = false;
@@ -336,25 +380,25 @@ void Player::A_start_algorithm(int target , Point2D* target_point)
 			if (*maze[current.GetPoint()->GetY()][current.GetPoint()->GetX()] != this->me)
 				*maze[current.GetPoint()->GetY()][current.GetPoint()->GetX()] = this->me;
 
-				node->setPoint(current.GetPoint()->GetY(), current.GetPoint()->GetX());
-				
-				// change traget of search
-				current.setTargetPoint(target_point);
+			node->setPoint(current.GetPoint()->GetY(), current.GetPoint()->GetX());
 
-				//-------------------------------------------------------------------------------------------
-				if (check_player_in_room() == true && this->munitions >= 4)
-					search_Neighbors();
-				//-------------------------------------------------------------------------------------------
+			// change traget of search
+			current.setTargetPoint(target_point);
+
+			//-------------------------------------------------------------------------------------------
+			if (check_player_in_room() == true && this->munitions >= 4)
+				search_Neighbors();
+			//-------------------------------------------------------------------------------------------
 
 
-				Go_up(target);
-				Go_down(target);
-				Go_right(target);
-				Go_left(target);
+			Go_up(target);
+			Go_down(target);
+			Go_right(target);
+			Go_left(target);
 
-				clean_leftover();
+			clean_leftover();
 
-				return;
+			return;
 		}
 		return;
 	}
@@ -385,7 +429,7 @@ void Player::Go_up(int target)
 		}
 
 	}
-	
+
 }
 
 
@@ -414,7 +458,7 @@ void Player::Go_down(int target)
 
 
 	}
-	
+
 }
 
 
@@ -443,7 +487,7 @@ void Player::Go_right(int target)
 
 
 	}
-	
+
 }
 
 
@@ -472,13 +516,13 @@ void Player::Go_left(int target)
 
 
 	}
-	
+
 }
 
 
 void Player::clean_leftover()
 {
-	
+
 	//printf("FUN : clean_leftover : black size : %d\n", black.size());
 
 	for (black_iterator = black.begin(); black_iterator != black.end(); black_iterator++)
@@ -486,8 +530,8 @@ void Player::clean_leftover()
 			if (*maze[black_iterator->GetPoint()->GetY()][black_iterator->GetPoint()->GetX()] != this->enemy)
 				*maze[black_iterator->GetPoint()->GetY()][black_iterator->GetPoint()->GetX()] = SPACE;
 
-	
-	if(black.size() > 150)
+
+	if (black.size() > 150)
 		black.erase(black.begin());
 
 }
@@ -510,24 +554,10 @@ void Player::print(char* action)
 	printf("<<<<<<<<<<<<<<<-------------------%s------------------->>>>>>>>>>>>>>>\n", this->name);
 	printf("%s : HEALTH		 : %d\n", this->name, this->health);
 	printf("%s : MUNITIONS	 : %d\n", this->name, this->munitions);
-	printf("%s : ACTION		 : %s\n", this->name , action);
+	printf("%s : ACTION		 : %s\n", this->name, action);
 	printf("------------------------------------------------------------------\n", this->name);
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -627,11 +657,5 @@ index = i + 1;
 return index;
 }
 
-
-
-
 */
-
-
-
 

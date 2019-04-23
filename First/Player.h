@@ -12,6 +12,8 @@ using namespace std;
 
 const int MAZE_SIZE = 100;
 const int HEALTH_MUNITIONS_SIZE = 2;
+const int NUM_HIDDEN = 3;
+
 
 
 class Player
@@ -27,6 +29,7 @@ private:
 	int me;
 	int enemy;
 	int health;
+	int old_health;
 	int munitions;
 	char* name;
 	bool *a_star_started;
@@ -34,6 +37,7 @@ private:
 	Point2D *target_seatch;
 	Point2D health_arr[HEALTH_MUNITIONS_SIZE];
 	Point2D munition_arr[HEALTH_MUNITIONS_SIZE];
+	Point2D hidden_arr[NUM_HIDDEN];
 	Point2D *enemy_point;
 	BestNode current;
 	BestNode* node;
@@ -45,13 +49,13 @@ private:
 	vector<BestNode>::iterator gray_iterator;
 	Player* enemy1;
 
-	
+
 
 public:
-	Player(char* , Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE] , int me , int enemy , Point2D* health_point , Point2D* munition_point);
+	Player(char*, Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE], int me, int enemy, Point2D* health_point, Point2D* munition_point);
 
 	//new constructor
-	Player(char*, Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE], int me, int enemy, Point2D health_arr[HEALTH_MUNITIONS_SIZE], Point2D* munition_arr[HEALTH_MUNITIONS_SIZE]);
+	Player(char* name, Point2D* start, Point2D* target, int maze[MAZE_SIZE][MAZE_SIZE], int me, int enemy, Point2D health_arr[HEALTH_MUNITIONS_SIZE], Point2D munition_arr[HEALTH_MUNITIONS_SIZE], Point2D hidden_arr[NUM_HIDDEN]);
 
 	void set_player(Player *enemy);
 
@@ -63,6 +67,7 @@ public:
 	int get_distance(Point2D *p);
 	void search_health();
 	void search_munitions();
+	void escape();
 	void Go_up(int target);
 	void Go_down(int target);
 	void Go_right(int target);
